@@ -1,0 +1,11 @@
+# Face sorter — clustering version
+# Python 3.10–3.12 recommended (use the setup steps in README.md).
+
+insightface>=0.7.3       # detection + antelopev2 embeddings
+onnxruntime>=1.17        # runs the InsightFace models (CPU)
+numpy>=1.24,<2.0         # pinned <2.0 for insightface/hdbscan ABI stability
+opencv-python>=4.8       # image loading
+scikit-learn>=1.3        # normalization + DBSCAN fallback
+hdbscan>=0.8.33          # main clustering algorithm
+tqdm>=4.66               # progress bars
+pillow-heif>=0.16        # optional: read iPhone .heic / .heif photos

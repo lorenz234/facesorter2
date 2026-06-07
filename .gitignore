@@ -1,0 +1,20 @@
+# venv
+.venv/
+venv/
+
+# python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# data & outputs
+data/
+all_pictures/
+out/
+*.npz
+
+# models (downloaded to ~/.insightface by default; ignore any local copies)
+models/
+
+# os
+.DS_Store
