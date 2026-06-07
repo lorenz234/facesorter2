@@ -14,6 +14,7 @@ DATA="${DATA:-all_pictures}"          # input photo folder
 OUT="${OUT:-out}"                     # output folder
 MIN_CLUSTER_SIZE="${MIN_CLUSTER_SIZE:-8}"   # smallest group counted as a person
 MIN_DET_SCORE="${MIN_DET_SCORE:-0.7}"       # drop weak detections (backs of heads)
+ASSIGN_THRESHOLD="${ASSIGN_THRESHOLD:-0.4}" # 2nd pass: recover turned faces into nearest person
 MIN_SIZE="${MIN_SIZE:-3}"             # skip people seen in fewer than N photos
 
 # ---- 1. environment (only the first time) ----
@@ -38,7 +39,8 @@ fi
 # ---- 2. cluster  →  3. export  →  4. visualize ----
 echo ">> [1/3] Detecting + clustering faces in '$DATA'"
 "$PY" cluster.py --data "$DATA" --out "$OUT" \
-  --min-cluster-size "$MIN_CLUSTER_SIZE" --min-det-score "$MIN_DET_SCORE" --resume
+  --min-cluster-size "$MIN_CLUSTER_SIZE" --min-det-score "$MIN_DET_SCORE" \
+  --assign-threshold "$ASSIGN_THRESHOLD" --resume
 
 echo ">> [2/3] Exporting one folder per person"
 "$PY" export_clusters.py --data "$DATA" --clusters "$OUT/clusters.csv" \

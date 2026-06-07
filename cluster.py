@@ -242,6 +242,41 @@ def cluster_faces(embeddings: np.ndarray, min_cluster_size: int, algo: str):
     return labels.astype(np.int32), scores
 
 
+def reassign_noise(embeddings: np.ndarray, labels, scores, threshold: float):
+    """Second pass: pull each noise (-1) face into the nearest person cluster
+    when its cosine similarity to that cluster's centroid is >= threshold.
+
+    Recovers turned / shadowed faces of known people (they sit close to their
+    centroid) without resurrecting low-quality phantom clusters — true
+    strangers stay far from every centroid. Modifies labels and scores in
+    place (reassigned faces get their cosine similarity as the score) and
+    returns the number reassigned.
+    """
+    from sklearn.preprocessing import normalize
+
+    labels = np.asarray(labels)
+    clusters = sorted(set(int(c) for c in labels) - {-1})
+    noise_mask = labels == -1
+    if threshold <= 0 or not clusters or not noise_mask.any():
+        return 0
+
+    X = normalize(embeddings.astype(np.float64))
+    centroids = np.vstack([
+        normalize(X[labels == c].mean(axis=0, keepdims=True))
+        for c in clusters
+    ])
+    idx = np.where(noise_mask)[0]
+    sims = X[idx] @ centroids.T            # cosine: rows already unit-norm
+    best = sims.max(axis=1)
+    best_cluster = np.asarray(clusters)[sims.argmax(axis=1)]
+
+    take = best >= threshold
+    chosen = idx[take]
+    labels[chosen] = best_cluster[take].astype(labels.dtype)
+    scores[chosen] = best[take].astype(scores.dtype)
+    return int(take.sum())
+
+
 def write_clusters_csv(path: Path, rel_files, face_indices, labels, scores,
                        bboxes):
     """Columns: file, face_index, cluster, score, x1, y1, x2, y2.
@@ -287,6 +322,11 @@ def parse_args(argv=None):
                    help="Drop weak detections (backs of heads / blurry / "
                         "profile) below this confidence before clustering. "
                         "Try 0.65. Such faces are moved to noise, not deleted.")
+    p.add_argument("--assign-threshold", type=float, default=0.4,
+                   help="Second pass: pull each noise face into the nearest "
+                        "person when cosine similarity >= this (0 disables). "
+                        "Recovers turned/shadowed faces of known people; "
+                        "true strangers stay in noise.")
     p.add_argument("--model", default="antelopev2",
                    help="InsightFace model pack name.")
     p.add_argument("--det-size", type=int, default=640,
@@ -382,6 +422,12 @@ def main(argv=None) -> int:
                                            args.algo)
         labels[keep] = k_labels
         scores[keep] = k_scores
+
+    if args.assign_threshold > 0:
+        n_re = reassign_noise(X, labels, scores, args.assign_threshold)
+        if n_re:
+            print(f"Reassigned {n_re} noise faces to the nearest person "
+                  f"(cosine >= {args.assign_threshold}).")
 
     write_clusters_csv(csv_path, rel_files, face_indices, labels, scores,
                        bboxes)

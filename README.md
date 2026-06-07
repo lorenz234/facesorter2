@@ -37,6 +37,7 @@ MIN_CLUSTER_SIZE=5 MIN_DET_SCORE=0.6 ./run.sh
 | `OUT` | `out` | output folder |
 | `MIN_CLUSTER_SIZE` | `8` | smallest group counted as a person |
 | `MIN_DET_SCORE` | `0.7` | drop weak detections (backs of heads / blurry) |
+| `ASSIGN_THRESHOLD` | `0.4` | 2nd pass: pull turned/shadowed faces into nearest person |
 | `MIN_SIZE` | `3` | skip people seen in fewer than N photos |
 
 ## Running the steps yourself
@@ -123,6 +124,7 @@ Common options:
 | `--out` | all | Output folder |
 | `--min-cluster-size` | cluster.py | Smallest group counted as a person (default 5) |
 | `--min-det-score` | cluster.py | Drop weak detections below this confidence (try 0.7) |
+| `--assign-threshold` | cluster.py | 2nd pass: recover noise faces into nearest person by cosine (0 disables) |
 | `--det-size` | cluster.py | Detector size in px; raise to catch small/distant faces |
 | `--resume` | cluster.py | Re-run after adding photos; only embeds the new ones |
 | `--recluster` | cluster.py | Re-cluster existing embeddings without re-detecting |
@@ -148,7 +150,10 @@ python cluster.py --out out --recluster --min-cluster-size 10
 2. **Embed** — each face becomes a 512-dim, L2-normalized vector (antelopev2).
 3. **Cluster** — HDBSCAN groups faces by similarity (cosine ≈ euclidean on
    unit vectors). Faces that match nothing become "noise".
-4. **Export** — images are copied into per-person folders.
+4. **Recover** — a second pass (`--assign-threshold`) pulls each noise face
+   into the nearest person when it's similar enough, rescuing turned/shadowed
+   shots of known people while leaving true strangers in noise.
+5. **Export** — images are copied into per-person folders.
 
 `out/embeddings.npz` holds the raw embeddings + metadata. `out/clusters.csv`
 holds one row per face:
